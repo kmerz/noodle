@@ -2,14 +2,17 @@
 
 module Noodle.Views.Index where
 
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import Text.Blaze.Html5
+import Text.Blaze.Html5.Attributes
 import Text.Blaze.Html.Renderer.Text
+import Data.Monoid ((<>))
 
 render items = do
-  H.html $ do
-    H.body $ do
-      H.h1 "My todo list"
-      H.ul $ do
-        H.li (head items)
-        H.li (head items)
+  html $ do
+    body $ do
+      h2 "Index of polls"
+      a ! href "/polls/new" $ "New Poll"
+      ul $ do
+        mapM_ renderLn items
+  where renderLn i = li (a ! href ("/polls/" <> (stringValue (show $ fst i))) $
+                                toHtml (snd i))

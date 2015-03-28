@@ -20,6 +20,8 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Time
 
 import qualified Noodle.Views.Index
+import qualified Noodle.Views.Show
+import qualified Noodle.Views.New
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Poll
@@ -28,21 +30,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     deriving Show
   |]
 
-
 blaze = S.html . renderHtml
-
-initDb = do
-  runSqlite "noodle.db" $ do
-    runMigration migrateAll
-    insert $ Poll "What should we do?" "It is about time to do somthing"
-    insert $ Poll "What should we eat?" "It is about time to eat somthing"
-
-allPolls = do
-  runSqlite "noodle.db" $ do
-    polls <- selectList ([] :: [Filter Poll]) []
-    return polls
-
-
 main :: IO ()
 main = do
   initDb
@@ -50,6 +38,45 @@ main = do
 
 scottySite = do
   S.scotty 3000 $ do
-    polls <- liftIO $ allPolls
+    S.get "/polls" $ do
+      polls <- liftIO $ allPolls
+      blaze $ Noodle.Views.Index.render $ pollNames $ polls
     S.get "/" $ do
-      blaze $ Noodle.Views.Index.render [ H.toHtml (show polls) ]
+      polls <- liftIO $ allPolls
+      blaze $ Noodle.Views.Index.render $ pollNames $ polls
+    S.get "/polls/new" $ do
+      blaze $ Noodle.Views.New.render
+    S.get "/polls/:id" $ do
+      id <- S.param "id"
+      poll <- liftIO $ getPollById id
+      blaze $ Noodle.Views.Show.render $ pollValues $ head poll
+    S.post "/polls/" $ do
+      name <- S.param "name"
+      desc <- S.param "desc"
+      createPoll name desc
+      polls <- liftIO $ allPolls
+      blaze $ Noodle.Views.Index.render $ pollNames $ polls
+
+initDb = do
+  runSqlite "noodle.db" $ do
+    runMigration migrateAll
+
+createPoll name desc = do
+  runSqlite "noodle.db" $ do
+    insert $ Poll name desc
+
+allPolls = do
+  runSqlite "noodle.db" $ do
+    polls <- selectList ([] :: [Filter Poll]) []
+    return $ polls
+
+getPollById id = do
+  runSqlite "noodle.db" $ do
+    selectList [PollId ==. (toSqlKey (read id))] [LimitTo 1]
+
+pollNames = map (\i -> ((getPollId i), (pollName (entityVal i))))
+
+getPollId x = unSqlBackendKey $ unPollKey $ entityKey x
+
+pollValues :: Entity Poll -> (String, String)
+pollValues i = ((pollName (entityVal i)), (pollDesc (entityVal i)))
