@@ -18,6 +18,8 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO)
 import Data.Time
+import Data.Text.Lazy as T (pack)
+import Data.Monoid (mconcat)
 
 import qualified Noodle.Views.Index
 import qualified Noodle.Views.Show
@@ -60,16 +62,12 @@ scottySite = do
       name <- S.param "name"
       desc <- S.param "desc"
       createPoll name desc
-      polls <- liftIO $ allPolls
-      blaze $ Noodle.Views.Index.render $ pollNames $ polls
+      S.redirect "/"
     S.post "/options/" $ do
       name <- S.param "name" :: S.ActionM String
       pId <- S.param "id":: S.ActionM String
       createOption pId name
-      poll <- liftIO $ getPollById pId
-      options <- liftIO $ getOptionsByPollId pId
-      blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-        (optionsValues options)
+      S.redirect $ T.pack $ "/polls/" ++ pId
 
 initDb = do
   runSqlite "noodle.db" $ do

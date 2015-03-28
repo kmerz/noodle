@@ -11,11 +11,11 @@ render (pollId, pollName, pollDesc) options = do
   H.html $ do
     H.body $ do
       H.h3 "Show of poll"
-      H.h5 "Name:"
+      H.h4 "Name:"
       H.p $ toHtml pollName
-      H.h5 "Description"
+      H.h4 "Description"
       H.p $ toHtml pollDesc
-      H.h5 "Options"
+      H.h4 "Options"
       H.ul $ do
         mapM_ renderLn options
       H.br
