@@ -1,0 +1,1 @@
+fromList [(2,Poll {name = "Was wollen wir trinken?", opts = fromList [(1,Opt {desc = "Bier", up = [], down = []}),(2,Opt {desc = "Wein", up = [], down = []}),(3,Opt {desc = "Wasser", up = [], down = []}),(4,Opt {desc = "Kaffee", up = [], down = []}),(5,Opt {desc = "Saft", up = [], down = []})]})]
