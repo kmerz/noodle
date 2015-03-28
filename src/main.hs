@@ -28,6 +28,10 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     name String
     desc String
     deriving Show
+  Option
+    pollId PollId
+    name String
+    deriving Show
   |]
 
 blaze = S.html . renderHtml
@@ -49,13 +53,23 @@ scottySite = do
     S.get "/polls/:id" $ do
       id <- S.param "id"
       poll <- liftIO $ getPollById id
-      blaze $ Noodle.Views.Show.render $ pollValues $ head poll
+      options <- liftIO $ getOptionsByPollId id
+      blaze $ Noodle.Views.Show.render (pollValues $ head poll)
+        (optionsValues options)
     S.post "/polls/" $ do
       name <- S.param "name"
       desc <- S.param "desc"
       createPoll name desc
       polls <- liftIO $ allPolls
       blaze $ Noodle.Views.Index.render $ pollNames $ polls
+    S.post "/options/" $ do
+      name <- S.param "name" :: S.ActionM String
+      pId <- S.param "id":: S.ActionM String
+      createOption pId name
+      poll <- liftIO $ getPollById pId
+      options <- liftIO $ getOptionsByPollId pId
+      blaze $ Noodle.Views.Show.render (pollValues $ head poll)
+        (optionsValues options)
 
 initDb = do
   runSqlite "noodle.db" $ do
@@ -78,5 +92,17 @@ pollNames = map (\i -> ((getPollId i), (pollName (entityVal i))))
 
 getPollId x = unSqlBackendKey $ unPollKey $ entityKey x
 
-pollValues :: Entity Poll -> (String, String)
-pollValues i = ((pollName (entityVal i)), (pollDesc (entityVal i)))
+pollValues i = ((getPollId i), (pollName (entityVal i)), (pollDesc (entityVal i)))
+
+optionsValues = map (\o -> ((getOptionId o),
+  (optionName (entityVal o))))
+
+getOptionsByPollId id = do
+  runSqlite "noodle.db" $ do
+    selectList [OptionPollId ==. (toSqlKey (read id))] []
+
+getOptionId x = unSqlBackendKey $ unOptionKey $ entityKey x
+
+createOption pId name = do
+  runSqlite "noodle.db" $ do
+    insert $ Option (toSqlKey (read pId)) name
