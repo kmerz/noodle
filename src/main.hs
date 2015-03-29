@@ -119,7 +119,7 @@ getNewPollId id = unSqlBackendKey $ unPollKey id
 
 allPolls = do
   runSqlite "noodle.db" $ do
-    polls <- selectList ([] :: [Filter Poll]) []
+    polls <- selectList ([] :: [Filter Poll]) [LimitTo 30, Desc PollId]
     return $ polls
 
 getPollById id = do
