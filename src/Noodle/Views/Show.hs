@@ -5,6 +5,7 @@ module Noodle.Views.Show where
 import Text.Blaze.Html5 as H
 import Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
+import Data.List (intercalate)
 
 render (pollId, pollName, pollDesc) options voters errors = do
   H.html $ do
@@ -39,7 +40,7 @@ render (pollId, pollName, pollDesc) options voters errors = do
             H.td $ do
               H.b $ H.toHtml $ name
             H.td ! A.class_ "voters" $ do
-              H.p $ H.toHtml $ unwords $ Prelude.map (\x -> x ++ ", ") voters
+              H.p $ H.toHtml $ intercalate ", " voters
         renderErrors error = do
           H.p ! A.class_ "error" $ error
           H.br
