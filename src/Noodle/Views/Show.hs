@@ -19,6 +19,7 @@ render (pollId, pollName, pollDesc) options voters errors = do
       mapM_ renderErrors errors
       H.form ! A.method "post" ! A.action "/options/" $ do
         H.input ! A.class_ "input" ! A.placeholder "add a option" ! A.name "name"
+        H.input ! A.class_ "input" ! A.placeholder "with desctiption" ! A.name "desc"
         H.input ! A.type_ "hidden" ! A.value (H.stringValue (show pollId)) !
           A.name "id"
         H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Add"
@@ -30,7 +31,7 @@ render (pollId, pollName, pollDesc) options voters errors = do
         H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
       H.br
       H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
-  where renderLn ((id, name), (_, voters)) = do
+  where renderLn ((id, name, desc), (_, voters)) = do
           H.tr $ do
             H.td $ do
               H.p $ H.toHtml $ (show (length voters))
@@ -39,6 +40,8 @@ render (pollId, pollName, pollDesc) options voters errors = do
                 A.type_ "checkbox"
             H.td $ do
               H.b $ H.toHtml $ name
+              H.br
+              H.toHtml desc
             H.td ! A.class_ "voters" $ do
               H.p $ H.toHtml $ intercalate ", " voters
         renderErrors error = do

@@ -34,6 +34,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Option
     pollId PollId
     name String
+    desc String
     deriving Show
   Vote
     optionId OptionId
@@ -94,6 +95,7 @@ scottySite = do
           S.redirect $ T.pack $ "/polls/" ++ (show (getNewPollId newId))
     S.post "/options/" $ do
       name <- S.param "name" :: S.ActionM String
+      desc <- S.param "desc" :: S.ActionM String
       pId <- S.param "id":: S.ActionM String
       poll <- liftIO $ getPollById pId
       options <- liftIO $ getOptionsByPollId pId
@@ -103,7 +105,7 @@ scottySite = do
                    (optionsValues options) (voterValues voters)
                    [ "Option needs a name" ]
         otherwise -> do
-          createOption pId name
+          createOption pId name desc
           S.redirect $ T.pack $ "/polls/" ++ pId
 
 initDb = do
@@ -133,7 +135,7 @@ getPollId x = unSqlBackendKey $ unPollKey $ entityKey x
 pollValues i = ((getPollId i), (pollName (entityVal i)), (pollDesc (entityVal i)))
 
 optionsValues = map (\o -> ((getOptionId o),
-  (optionName (entityVal o))))
+  (optionName (entityVal o)), (optionDesc (entityVal o))))
 
 optionIds opts = map (\o -> getOptionId o) opts
 
@@ -143,9 +145,9 @@ getOptionsByPollId id = do
   runSqlite "noodle.db" $ do
     selectList [OptionPollId ==. (toSqlKey (read id))] []
 
-createOption pId name = do
+createOption pId name desc = do
   runSqlite "noodle.db" $ do
-    insert $ Option (toSqlKey (read pId)) name
+    insert $ Option (toSqlKey (read pId)) name desc
 
 getVotersByOptionIds ids = do
   mapM (\ oId -> do
