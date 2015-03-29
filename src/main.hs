@@ -25,6 +25,7 @@ import Data.Monoid (mconcat)
 import qualified Noodle.Views.Index
 import qualified Noodle.Views.Show
 import qualified Noodle.Views.New
+import qualified Noodle.Views.Edit
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Poll
@@ -61,6 +62,14 @@ scottySite = do
       blaze $ Noodle.Views.Index.render $ pollNames $ polls
     S.get "/polls/new" $ do
       blaze $ Noodle.Views.New.render []
+    S.post "/options/delete" $ do
+      id <- S.param "id" :: S.ActionM String
+      all_params <- S.params
+      let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
+          then (T.unpack value):acc
+          else acc) [] all_params
+      deleteOptions choosen_opt_ids
+      S.redirect $ T.pack $ "/polls/" ++ id ++ "/edit"
     S.post "/polls/:id/vote" $ do
       id <- S.param "id" :: S.ActionM String
       poll <- liftIO $ getPollById id
@@ -78,6 +87,12 @@ scottySite = do
         otherwise -> do
           voteForOptions name (optionIds options) choosen_opt_ids
           S.redirect $ T.pack $ "/polls/" ++ id
+    S.get "/polls/:id/edit" $ do
+      id <- S.param "id"
+      poll <- liftIO $ getPollById id
+      options <- liftIO $ getOptionsByPollId id
+      blaze $ Noodle.Views.Edit.render
+        (pollValues $ head poll) (optionsValues options) []
     S.get "/polls/:id" $ do
       id <- S.param "id"
       poll <- liftIO $ getPollById id
@@ -85,6 +100,19 @@ scottySite = do
       voters <- liftIO $ getVotersByOptionIds (optionIds options)
       blaze $ Noodle.Views.Show.render (pollValues $ head poll)
         (optionsValues options) (voterValues voters) []
+    S.post "/polls/:id/update" $ do
+      id <- S.param "id"
+      name <- S.param "name"
+      desc <- S.param "desc"
+      poll <- liftIO $ getPollById id
+      options <- liftIO $ getOptionsByPollId id
+      case name of
+        "" -> blaze $ Noodle.Views.Edit.render
+                (pollValues $ head poll) (optionsValues options)
+                [ "Poll needs a name" ]
+        otherwise -> do
+          updatePoll id name desc
+          S.redirect $ T.pack $ "/polls/" ++ id
     S.post "/polls/" $ do
       name <- S.param "name"
       desc <- S.param "desc"
@@ -101,12 +129,11 @@ scottySite = do
       options <- liftIO $ getOptionsByPollId pId
       voters <- liftIO $ getVotersByOptionIds (optionIds options)
       case name of
-        "" -> do blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-                   (optionsValues options) (voterValues voters)
-                   [ "Option needs a name" ]
+        "" -> do blaze $ Noodle.Views.Edit.render (pollValues $ head poll)
+                   (optionsValues options) [ "Option needs a name" ]
         otherwise -> do
           createOption pId name desc
-          S.redirect $ T.pack $ "/polls/" ++ pId
+          S.redirect $ T.pack $ "/polls/" ++ pId ++ "/edit"
 
 initDb = do
   runSqlite "noodle.db" $ do
@@ -116,6 +143,11 @@ createPoll name desc = do
   runSqlite "noodle.db" $ do
     id <- insert $ Poll name desc
     return id
+
+updatePoll id name desc = do
+  runSqlite "noodle.db" $ do
+    replace pollId $ Poll name desc
+    where pollId = (toSqlKey (read id))
 
 getNewPollId id = unSqlBackendKey $ unPollKey id
 
@@ -161,6 +193,14 @@ voterName vote = (voteVoter (entityVal vote))
 getVotersByOptionId oId =
   runSqlite "noodle.db" $ do
     selectList [VoteOptionId ==. (toSqlKey oId)] []
+
+deleteOptions ids = do
+  runSqlite "noodle.db" $ do
+    mapM_ (\id -> runSqlite "noodle.db" $ do
+      deleteWhere [VoteOptionId ==. id]
+      deleteWhere [OptionId ==. id]
+      ) choosen_ids
+  where choosen_ids = map (\x -> (toSqlKey (read x))) ids
 
 voteForOptions name opts c_opt_ids = do
   mapM_ (\id -> runSqlite "noodle.db" $ do

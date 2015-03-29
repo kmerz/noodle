@@ -19,6 +19,7 @@ cabal-version:       >=1.10
 executable noodle
   main-is:             main.hs
   other-modules:       Noodle.Views.Index, Noodle.Views.Show, Noodle.Views.New
+                       Noodle.Views.Edit
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8, scotty, blaze-html, monads-tf,
                        persistent, persistent-sqlite, time, transformers,

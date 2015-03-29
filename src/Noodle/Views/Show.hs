@@ -17,20 +17,16 @@ render (pollId, pollName, pollDesc) options voters errors = do
       mapM_ (\x-> do H.toHtml x; H.br) (lines pollDesc)
       H.h4 "Options"
       mapM_ renderErrors errors
-      H.form ! A.method "post" ! A.action "/options/" $ do
-        H.input ! A.class_ "input" ! A.placeholder "add a option" ! A.name "name"
-        H.input ! A.class_ "input" ! A.placeholder "with desctiption" ! A.name "desc"
-        H.input ! A.type_ "hidden" ! A.value (H.stringValue (show pollId)) !
-          A.name "id"
-        H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Add"
       H.form ! A.method "post" !
-        A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/vote/")) $ do
+        A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/vote")) $ do
         H.table $ do
           mapM_ (renderLn) (zip options voters)
         H.input ! A.class_ "input" ! A.placeholder "Vote as" ! A.name "name"
         H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
       H.br
       H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
+      H.a ! A.class_ "btn" !
+        A.href (H.stringValue ("/polls/" ++ (show pollId) ++ "/edit")) $ "Edit"
   where renderLn ((id, name, desc), (_, voters)) = do
           H.tr $ do
             H.td $ do
