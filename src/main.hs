@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 
 import Control.Monad.Trans (liftIO)
+import Control.Monad (filterM)
 import qualified Web.Scotty as S
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -18,7 +19,7 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO)
 import Data.Time
-import Data.Text.Lazy as T (pack)
+import Data.Text.Lazy as T (unpack, pack)
 import Data.Monoid (mconcat)
 
 import qualified Noodle.Views.Index
@@ -33,6 +34,11 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Option
     pollId PollId
     name String
+    deriving Show
+  Vote
+    optionId OptionId
+    voter String
+    UniqueVote optionId voter
     deriving Show
   |]
 
@@ -52,12 +58,23 @@ scottySite = do
       blaze $ Noodle.Views.Index.render $ pollNames $ polls
     S.get "/polls/new" $ do
       blaze $ Noodle.Views.New.render
+    S.post "/polls/:id/vote" $ do
+      id <- S.param "id" :: S.ActionM String
+      name <- S.param "name" :: S.ActionM String
+      options <- liftIO $ getOptionsByPollId id
+      all_params <- S.params
+      let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
+          then (T.unpack value):acc
+          else acc) [] all_params
+      voteForOptions name (optionIds options) choosen_opt_ids
+      S.redirect $ T.pack $ "/polls/" ++ id
     S.get "/polls/:id" $ do
       id <- S.param "id"
       poll <- liftIO $ getPollById id
       options <- liftIO $ getOptionsByPollId id
+      voters <- liftIO $ getVotersByOptionIds (optionIds options)
       blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-        (optionsValues options)
+        (optionsValues options) (voterValues voters)
     S.post "/polls/" $ do
       name <- S.param "name"
       desc <- S.param "desc"
@@ -95,12 +112,36 @@ pollValues i = ((getPollId i), (pollName (entityVal i)), (pollDesc (entityVal i)
 optionsValues = map (\o -> ((getOptionId o),
   (optionName (entityVal o))))
 
+optionIds opts = map (\o -> getOptionId o) opts
+
+getOptionId x = unSqlBackendKey $ unOptionKey $ entityKey x
+
 getOptionsByPollId id = do
   runSqlite "noodle.db" $ do
     selectList [OptionPollId ==. (toSqlKey (read id))] []
 
-getOptionId x = unSqlBackendKey $ unOptionKey $ entityKey x
-
 createOption pId name = do
   runSqlite "noodle.db" $ do
     insert $ Option (toSqlKey (read pId)) name
+
+getVotersByOptionIds ids = do
+  mapM (\ oId -> do
+    voters <- getVotersByOptionId oId
+    return (oId, voters)) ids
+
+voterValues = map (\(oId, voters) -> (oId, (map voterName voters)))
+
+voterName vote = (voteVoter (entityVal vote))
+
+getVotersByOptionId oId =
+  runSqlite "noodle.db" $ do
+    selectList [VoteOptionId ==. (toSqlKey oId)] []
+
+voteForOptions name opts c_opt_ids = do
+  mapM_ (\id -> runSqlite "noodle.db" $ do
+    deleteWhere [VoteOptionId ==. (toSqlKey id), VoteVoter ==. name]
+    ) opts
+  mapM_ (\id -> runSqlite "noodle.db" $ do
+    insert $ Vote id name
+    ) choosen_ids
+  where choosen_ids = map (\x -> (toSqlKey (read x))) c_opt_ids
