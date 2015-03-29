@@ -50,6 +50,8 @@ main = do
 
 scottySite = do
   S.scotty 3000 $ do
+    S.get "/noodle.css" $ do
+      S.file "noodle.css"
     S.get "/polls" $ do
       polls <- liftIO $ allPolls
       blaze $ Noodle.Views.Index.render $ pollNames $ polls

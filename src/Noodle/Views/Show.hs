@@ -8,24 +8,27 @@ import Text.Blaze.Html.Renderer.Text
 
 render (pollId, pollName, pollDesc) options voters errors = do
   H.html $ do
+    H.head $ do
+      H.title "Noodle - The doodle"
+      H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href "/noodle.css"
     H.body $ do
       H.h3 $ toHtml pollName
       mapM_ (\x-> do H.toHtml x; H.br) (lines pollDesc)
       H.h4 "Options"
       mapM_ renderErrors errors
       H.form ! A.method "post" ! A.action "/options/" $ do
-        H.input ! A.placeholder "add a option" ! A.name "name"
+        H.input ! A.class_ "input" ! A.placeholder "add a option" ! A.name "name"
         H.input ! A.type_ "hidden" ! A.value (H.stringValue (show pollId)) !
           A.name "id"
-        H.input ! A.type_ "submit" ! A.value "Add"
-      H.form ! A.method "post" ! A.enctype "application/json" !
+        H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Add"
+      H.form ! A.method "post" !
         A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/vote/")) $ do
         H.table $ do
           mapM_ (renderLn) (zip options voters)
-        H.input ! A.placeholder "Vote as" ! A.name "name"
-        H.input ! A.type_ "submit" ! A.value "Vote"
+        H.input ! A.class_ "input" ! A.placeholder "Vote as" ! A.name "name"
+        H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
       H.br
-      H.a ! A.href "/polls" $ "Back"
+      H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
   where renderLn ((id, name), (_, voters)) = do
           H.tr $ do
             H.td $ do
@@ -35,8 +38,8 @@ render (pollId, pollName, pollDesc) options voters errors = do
                 A.type_ "checkbox"
             H.td $ do
               H.b $ H.toHtml $ name
-            H.td $ do
+            H.td ! A.class_ "voters" $ do
               H.p $ H.toHtml $ unwords $ Prelude.map (\x -> x ++ ", ") voters
         renderErrors error = do
-          H.p ! A.style "color: red" $ error
+          H.p ! A.class_ "error" $ error
           H.br

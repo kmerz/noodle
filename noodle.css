@@ -1,0 +1,60 @@
+body {
+  font-family: Sans;
+}
+
+h4 {
+  margin-bottom: 7px;
+}
+
+.table {
+  border-collapse: collapse;
+  margin-top: 25px;
+  width: 500px;
+}
+
+.table td {
+  padding-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+  border-top: 1px solid #ddd;
+}
+
+.table a {
+  text-decoration: none;
+}
+
+.table a, .table a:visited, .table a:active, .table a:link {
+  color: #819FF7;
+}
+
+.table a:hover {
+  color: #045FB4;
+}
+
+.btns {
+  margin-top: 10px;
+}
+
+.btn {
+  text-decoration: none;
+  background-color: #eee;
+  color: #111;
+  padding: 3px 6px 3px 6px;
+  border: none;
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.input {
+  font-size: 14px;
+  margin-right: 5px;
+  padding-left: 5px;
+}
+
+.error {
+  background-color: #F78181;
+  padding: 5px;
+}
+
+.voters {
+  padding-left: 20px;
+}
