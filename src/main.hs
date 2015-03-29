@@ -57,34 +57,52 @@ scottySite = do
       polls <- liftIO $ allPolls
       blaze $ Noodle.Views.Index.render $ pollNames $ polls
     S.get "/polls/new" $ do
-      blaze $ Noodle.Views.New.render
+      blaze $ Noodle.Views.New.render []
     S.post "/polls/:id/vote" $ do
       id <- S.param "id" :: S.ActionM String
+      poll <- liftIO $ getPollById id
       name <- S.param "name" :: S.ActionM String
       options <- liftIO $ getOptionsByPollId id
+      voters <- liftIO $ getVotersByOptionIds (optionIds options)
       all_params <- S.params
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
           then (T.unpack value):acc
           else acc) [] all_params
-      voteForOptions name (optionIds options) choosen_opt_ids
-      S.redirect $ T.pack $ "/polls/" ++ id
+
+      case name of
+        "" -> blaze $ Noodle.Views.Show.render (pollValues $ head poll)
+                (optionsValues options) (voterValues voters) ["Vote needs a name"]
+        otherwise -> do
+          voteForOptions name (optionIds options) choosen_opt_ids
+          S.redirect $ T.pack $ "/polls/" ++ id
     S.get "/polls/:id" $ do
       id <- S.param "id"
       poll <- liftIO $ getPollById id
       options <- liftIO $ getOptionsByPollId id
       voters <- liftIO $ getVotersByOptionIds (optionIds options)
       blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-        (optionsValues options) (voterValues voters)
+        (optionsValues options) (voterValues voters) []
     S.post "/polls/" $ do
       name <- S.param "name"
       desc <- S.param "desc"
-      createPoll name desc
-      S.redirect "/"
+      case name of
+        "" -> blaze $ Noodle.Views.New.render [ "Poll needs a name" ]
+        otherwise -> do
+          newId <- liftIO $ createPoll name desc
+          S.redirect $ T.pack $ "/polls/" ++ (show (getNewPollId newId))
     S.post "/options/" $ do
       name <- S.param "name" :: S.ActionM String
       pId <- S.param "id":: S.ActionM String
-      createOption pId name
-      S.redirect $ T.pack $ "/polls/" ++ pId
+      poll <- liftIO $ getPollById pId
+      options <- liftIO $ getOptionsByPollId pId
+      voters <- liftIO $ getVotersByOptionIds (optionIds options)
+      case name of
+        "" -> do blaze $ Noodle.Views.Show.render (pollValues $ head poll)
+                   (optionsValues options) (voterValues voters)
+                   [ "Option needs a name" ]
+        otherwise -> do
+          createOption pId name
+          S.redirect $ T.pack $ "/polls/" ++ pId
 
 initDb = do
   runSqlite "noodle.db" $ do
@@ -92,7 +110,10 @@ initDb = do
 
 createPoll name desc = do
   runSqlite "noodle.db" $ do
-    insert $ Poll name desc
+    id <- insert $ Poll name desc
+    return id
+
+getNewPollId id = unSqlBackendKey $ unPollKey id
 
 allPolls = do
   runSqlite "noodle.db" $ do
