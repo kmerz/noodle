@@ -19,6 +19,7 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO)
 import Data.Time
+import qualified Data.Map as M
 import Data.Text.Lazy as T (unpack, pack)
 import Data.Monoid (mconcat)
 
@@ -75,7 +76,7 @@ scottySite = do
       poll <- liftIO $ getPollById id
       name <- S.param "name" :: S.ActionM String
       options <- liftIO $ getOptionsByPollId id
-      voters <- liftIO $ getVotersByOptionIds (optionIds options)
+      voters <- liftIO $ getVotesByOptionIds (optionIds options)
       all_params <- S.params
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
           then (T.unpack value):acc
@@ -83,7 +84,7 @@ scottySite = do
 
       case name of
         "" -> blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-                (optionsValues options) (voterValues voters) ["Vote needs a name"]
+                (optionsValues options) (getVoteNames voters) ["Vote needs a name"]
         otherwise -> do
           voteForOptions name (optionIds options) choosen_opt_ids
           S.redirect $ T.pack $ "/polls/" ++ id
@@ -97,9 +98,9 @@ scottySite = do
       id <- S.param "id"
       poll <- liftIO $ getPollById id
       options <- liftIO $ getOptionsByPollId id
-      voters <- liftIO $ getVotersByOptionIds (optionIds options)
+      voters <- liftIO $ getVotesByOptionIds (optionIds options)
       blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-        (optionsValues options) (voterValues voters) []
+        (optionsValues options) (getVoteNames voters) []
     S.post "/polls/:id/update" $ do
       id <- S.param "id"
       name <- S.param "name"
@@ -127,7 +128,6 @@ scottySite = do
       pId <- S.param "id":: S.ActionM String
       poll <- liftIO $ getPollById pId
       options <- liftIO $ getOptionsByPollId pId
-      voters <- liftIO $ getVotersByOptionIds (optionIds options)
       case name of
         "" -> do blaze $ Noodle.Views.Edit.render (pollValues $ head poll)
                    (optionsValues options) [ "Option needs a name" ]
@@ -181,14 +181,26 @@ createOption pId name desc = do
   runSqlite "noodle.db" $ do
     insert $ Option (toSqlKey (read pId)) name desc
 
-getVotersByOptionIds ids = do
-  mapM (\ oId -> do
+getVotesByOptionIds ids = do
+  votes <- mapM (\ oId -> do
     voters <- getVotersByOptionId oId
-    return (oId, voters)) ids
+    return (voters)) ids
+  let flat_votes = foldl (\acc x -> foldl (\a y -> y:a) acc x) [] votes
+  return flat_votes
+
+getVoteNames votes = foldl voteNameMap M.empty votes
+
+voteNameMap acc vote =
+  case M.lookup vName acc of
+    Just ids -> M.insert vName (vOptId:ids) acc
+    Nothing -> M.insert vName (vOptId:[]) acc
+  where vName = voterName vote
+        vOptId = unSqlBackendKey $ unOptionKey $ voterOptId vote
 
 voterValues = map (\(oId, voters) -> (oId, (map voterName voters)))
 
 voterName vote = (voteVoter (entityVal vote))
+voterOptId vote = (voteOptionId (entityVal vote))
 
 getVotersByOptionId oId =
   runSqlite "noodle.db" $ do

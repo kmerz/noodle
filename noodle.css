@@ -59,3 +59,17 @@ h4 {
 .voters {
   padding-left: 20px;
 }
+
+.true {
+  background-color: #BCF5A9;
+  color: #fff;
+  text-align: center;
+}
+
+.false {
+  background-color: #F5BCA9;
+}
+
+.checker {
+  text-align: center;
+}

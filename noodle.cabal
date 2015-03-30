@@ -23,6 +23,6 @@ executable noodle
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8, scotty, blaze-html, monads-tf,
                        persistent, persistent-sqlite, time, transformers,
-                       persistent-template, resourcet, text
+                       persistent-template, resourcet, text, containers
   hs-source-dirs:      src
   default-language:    Haskell2010
