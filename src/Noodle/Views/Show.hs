@@ -17,6 +17,8 @@ render (pollId, pollName, pollDesc) options voters cants errors editVoter = do
       H.h3 $ toHtml pollName
       mapM_ (\x-> do H.toHtml x; H.br) (lines pollDesc)
       H.br
+      H.a ! A.class_ "btn" ! A.href (
+        H.stringValue ("/polls/" ++ (show pollId) ++ "/edit_name")) $ "Edit"
       mapM_ renderErrors errors
       H.table $ do
         H.tr $ do
@@ -35,9 +37,10 @@ render (pollId, pollName, pollDesc) options voters cants errors editVoter = do
             mapM_ renderCheckbox options
             H.td $ H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
       H.br
-      H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
+      H.a ! A.class_ "btn" ! A.href "/polls" $ "To overview"
       H.a ! A.class_ "btn" !
-        A.href (H.stringValue ("/polls/" ++ (show pollId) ++ "/edit")) $ "Edit"
+        A.href (H.stringValue ("/polls/" ++ (show pollId) ++ "/edit")) $
+          "Edit Options"
   where renderOption (id, name, desc) = do
           H.td $ do
             H.b $ H.toHtml $ name

@@ -27,6 +27,7 @@ import qualified Noodle.Views.Index
 import qualified Noodle.Views.Show
 import qualified Noodle.Views.New
 import qualified Noodle.Views.Edit
+import qualified Noodle.Views.EditName
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Poll
@@ -94,6 +95,10 @@ scottySite = do
       options <- liftIO $ getOptionsByPollId id
       blaze $ Noodle.Views.Edit.render
         (pollValues $ head poll) (optionsValues options) []
+    S.get "/polls/:id/edit_name" $ do
+      id <- S.param "id"
+      poll <- liftIO $ getPollById id
+      blaze $ Noodle.Views.EditName.render (pollValues $ head poll) []
     S.get "/polls/:id" $ do
       id <- S.param "id"
       showAction id [] ""
@@ -112,10 +117,8 @@ scottySite = do
       name <- S.param "name"
       desc <- S.param "desc"
       poll <- liftIO $ getPollById id
-      options <- liftIO $ getOptionsByPollId id
       case name of
-        "" -> blaze $ Noodle.Views.Edit.render
-                (pollValues $ head poll) (optionsValues options)
+        "" -> blaze $ Noodle.Views.EditName.render (pollValues $ head poll)
                 [ "Poll needs a name" ]
         otherwise -> do
           updatePoll id name desc
@@ -127,7 +130,7 @@ scottySite = do
         "" -> blaze $ Noodle.Views.New.render [ "A Poll needs a name" ]
         otherwise -> do
           newId <- liftIO $ createPoll name desc
-          S.redirect $ T.pack $ "/polls/" ++ (show (getNewPollId newId))
+          S.redirect $ T.pack $ "/polls/" ++ (show (getNewPollId newId)) ++ "/edit"
     S.post "/options/" $ do
       name <- S.param "name" :: S.ActionM String
       desc <- S.param "desc" :: S.ActionM String
