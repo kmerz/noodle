@@ -30,9 +30,9 @@ render (pollId, pollName, pollDesc) errors = do
               H.textarea ! A.name "desc" ! A.cols "50" ! A.rows "10" $
                 H.toHtml pollDesc
         H.div ! A.class_ "btns" $ do
+          H.a ! A.class_ "btn" ! A.href (
+            H.stringValue ("/polls/" ++ (show pollId))) $ "To poll"
           H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Update Poll"
-      H.a ! A.class_ "btn" ! A.href (H.stringValue ("/polls/" ++ (show pollId))) $
-        "To poll"
   where renderErrors error = do
           H.p ! A.class_ "error" $ error
           H.br

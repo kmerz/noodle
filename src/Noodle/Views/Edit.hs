@@ -17,7 +17,7 @@ render (pollId, pollName, pollDesc) options errors = do
       mapM_ renderErrors errors
       H.form ! A.method "post" ! A.action "/options/" $ do
         H.input ! A.class_ "input" ! A.placeholder "add a option" ! A.name "name"
-        H.input ! A.class_ "input" ! A.placeholder "with desctiption" ! A.name "desc"
+        H.input ! A.class_ "input" ! A.placeholder "with description" ! A.name "desc"
         H.input ! A.type_ "hidden" ! A.value (H.stringValue (show pollId)) !
           A.name "id"
         H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Add"
