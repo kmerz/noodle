@@ -78,20 +78,15 @@ scottySite = do
       S.redirect $ T.pack $ "/polls/" ++ id ++ "/edit"
     S.post "/polls/:id/vote" $ do
       id <- S.param "id" :: S.ActionM String
-      poll <- liftIO $ getPollById id
       name <- S.param "name" :: S.ActionM String
       options <- liftIO $ getOptionsByPollId id
-      voters <- liftIO $ getVotesByOptionIds (optionIds options)
-      cants <- liftIO $ getCantsByPollId id
       all_params <- S.params
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
           then (T.unpack value):acc
           else acc) [] all_params
 
       case name of
-        "" -> blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-                (optionsValues options) (getVoteNames voters) (cantNames cants)
-                ["Vote needs a name"]
+        "" -> showAction id ["Vote needs a name"]
         otherwise -> do
           doVoting name (optionIds options) choosen_opt_ids id
           S.redirect $ T.pack $ "/polls/" ++ id
@@ -103,12 +98,7 @@ scottySite = do
         (pollValues $ head poll) (optionsValues options) []
     S.get "/polls/:id" $ do
       id <- S.param "id"
-      poll <- liftIO $ getPollById id
-      options <- liftIO $ getOptionsByPollId id
-      voters <- liftIO $ getVotesByOptionIds (optionIds options)
-      cants <- liftIO $ getCantsByPollId id
-      blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-        (optionsValues options) (getVoteNames voters) (cantNames cants) []
+      showAction id []
     S.post "/polls/:id/update" $ do
       id <- S.param "id"
       name <- S.param "name"
@@ -142,6 +132,14 @@ scottySite = do
         otherwise -> do
           createOption pId name desc
           S.redirect $ T.pack $ "/polls/" ++ pId ++ "/edit"
+
+showAction id errors = do
+  poll <- liftIO $ getPollById id
+  options <- liftIO $ getOptionsByPollId id
+  voters <- liftIO $ getVotesByOptionIds (optionIds options)
+  cants <- liftIO $ getCantsByPollId id
+  blaze $ Noodle.Views.Show.render (pollValues $ head poll)
+    (optionsValues options) (getVoteNames voters) (cantNames cants) []
 
 initDb = do
   runSqlite "noodle.db" $ do
