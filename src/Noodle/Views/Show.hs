@@ -18,23 +18,23 @@ render (pollId, pollName, pollDesc) options voters cants errors = do
       mapM_ (\x-> do H.toHtml x; H.br) (lines pollDesc)
       H.br
       mapM_ renderErrors errors
-      H.form ! A.method "post" !
-        A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/vote")) $ do
-        H.table $ do
-          H.tr $ do
-            H.td ""
-            mapM_ renderOption options
-          mapM_ renderVoter $ M.keys voters
-          H.tr $ do
-            mapM_ renderCants cants
-          H.tr $ do
-            H.td $ ""
-            mapM_ renderVoteCount options
-          H.tr $ do
+      H.table $ do
+        H.tr $ do
+          H.td ""
+          mapM_ renderOption options
+        mapM_ renderVoter $ M.keys voters
+        mapM_ renderCants cants
+        H.tr $ do
+          H.td $ ""
+          mapM_ renderVoteCount options
+        H.tr $ do
+          H.form ! A.method "post" !
+            A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/vote")) $ do
             H.td $ do
               H.input ! A.class_ "input" ! A.placeholder "Vote as" ! A.name "name"
             mapM_ renderCheckbox options
             H.td $ H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
+      H.br
       H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
       H.a ! A.class_ "btn" !
         A.href (H.stringValue ("/polls/" ++ (show pollId) ++ "/edit")) $ "Edit"
@@ -49,9 +49,10 @@ render (pollId, pollName, pollDesc) options voters cants errors = do
               A.value (H.stringValue (show id)) !
               A.type_ "checkbox"
         renderCants cant = do
-          H.td $ H.toHtml cant
-          mapM_ (\ (_, _, _) ->
-            H.td ! A.class_ "false" $ "") options
+          H.tr $ do
+            H.td $ H.toHtml cant
+            mapM_ (\ (_, _, _) ->
+              H.td ! A.class_ "false" $ "") options
         renderVoter voter = do
           H.tr $ do
             H.td $ H.toHtml voter
