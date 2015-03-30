@@ -84,7 +84,7 @@ scottySite = do
           then (T.unpack value):acc
           else acc) [] all_params
       case name of
-        "" -> showAction id ["Vote needs the name who votes."]
+        "" -> showAction id ["Vote needs the name who votes."] ""
         otherwise -> do
           doVoting name (optionIds options) choosen_opt_ids id
           S.redirect $ T.pack $ "/polls/" ++ id
@@ -96,7 +96,11 @@ scottySite = do
         (pollValues $ head poll) (optionsValues options) []
     S.get "/polls/:id" $ do
       id <- S.param "id"
-      showAction id []
+      showAction id [] ""
+    S.get "/polls/:id/vote/:name/edit" $ do
+      id <- S.param "id" :: S.ActionM String
+      name <- S.param "name" :: S.ActionM String
+      showAction id [] name
     S.post "/polls/:id/update" $ do
       id <- S.param "id"
       name <- S.param "name"
@@ -131,13 +135,13 @@ scottySite = do
           createOption pId name desc
           S.redirect $ T.pack $ "/polls/" ++ pId ++ "/edit"
 
-showAction id errors = do
+showAction id errors editVoter = do
   poll <- liftIO $ getPollById id
   options <- liftIO $ getOptionsByPollId id
   voters <- liftIO $ getVotesByOptionIds (optionIds options)
   cants <- liftIO $ getCantsByPollId id
   blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-    (optionsValues options) (getVoteNames voters) (cantNames cants) []
+    (optionsValues options) (getVoteNames voters) (cantNames cants) [] editVoter
 
 initDb = do
   runSqlite "noodle.db" $ do

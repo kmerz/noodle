@@ -8,7 +8,7 @@ import Text.Blaze.Html.Renderer.Text
 import Data.List (intercalate)
 import Data.Map as M hiding ((!))
 
-render (pollId, pollName, pollDesc) options voters cants errors = do
+render (pollId, pollName, pollDesc) options voters cants errors editVoter = do
   H.html $ do
     H.head $ do
       H.title "Noodle - The doodle"
@@ -49,20 +49,35 @@ render (pollId, pollName, pollDesc) options voters cants errors = do
               A.value (H.stringValue (show id)) !
               A.type_ "checkbox"
         renderCants cant = do
-          H.tr $ do
-            H.td $ H.toHtml cant
-            mapM_ (\ (_, _, _) ->
-              H.td ! A.class_ "false" $ "") options
+          if cant == editVoter
+            then renderEditVote cant
+            else
+            H.tr $ do
+              H.td $ H.toHtml cant
+              mapM_ (\ (_, _, _) ->
+                H.td ! A.class_ "false" $ "") options
+              H.td $ H.a ! A.class_ "btn" !
+                A.href (H.stringValue (
+                  "/polls/" ++ (show pollId) ++ "/vote/" ++ cant ++ "/edit")) $
+                    "Edit"
         renderVoter voter = do
-          H.tr $ do
-            H.td $ H.toHtml voter
-            mapM_ (\ (id, _, _) ->
-              case M.lookup voter voters of
-                Just ids -> do if (id `elem` ids)
-                                 then H.td ! A.class_ "true" $ "✓"
-                                 else H.td ! A.class_ "false" $ ""
-                Nothing -> H.td ""
-              ) options
+          if (voter == editVoter)
+            then
+              renderEditVote voter
+            else
+            H.tr $ do
+              H.td $ H.toHtml voter
+              mapM_ (\ (id, _, _) ->
+                case M.lookup voter voters of
+                  Just ids -> do if (id `elem` ids)
+                                   then H.td ! A.class_ "true" $ "✓"
+                                   else H.td ! A.class_ "false" $ ""
+                  Nothing -> H.td ""
+                ) options
+              H.td $ H.a ! A.class_ "btn" !
+                A.href (H.stringValue (
+                  "/polls/" ++ (show pollId) ++ "/vote/" ++ voter ++ "/edit")) $
+                    "Edit"
         renderVoteCount (id, _, _) = do
           H.td ! A.class_ "count" $ H.toHtml (show count)
           where count = M.fold(\ids acc ->
@@ -70,3 +85,16 @@ render (pollId, pollName, pollDesc) options voters cants errors = do
         renderErrors error = do
           H.p ! A.class_ "error" $ error
           H.br
+        renderEditVote voter = do
+          H.tr $ do
+            H.form ! A.method "post" !
+              A.action (H.stringValue (
+                "/polls/" ++ (show pollId) ++ "/vote")) $ do
+              H.td $ do
+                H.input ! A.class_ "input" ! A.disabled "disabled" !
+                  A.name "name-disabled" ! A.value (H.stringValue voter)
+                H.input ! A.class_ "input" ! A.type_ "hidden" !
+                  A.name "name" ! A.value (H.stringValue voter)
+              mapM_ renderCheckbox options
+              H.td $ H.input ! A.class_ "btn" ! A.type_ "submit" !
+                A.value "Update"
