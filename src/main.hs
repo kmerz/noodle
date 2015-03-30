@@ -64,8 +64,7 @@ scottySite = do
       polls <- liftIO $ allPolls
       blaze $ Noodle.Views.Index.render $ pollNames $ polls
     S.get "/" $ do
-      polls <- liftIO $ allPolls
-      blaze $ Noodle.Views.Index.render $ pollNames $ polls
+      S.redirect "/polls"
     S.get "/polls/new" $ do
       blaze $ Noodle.Views.New.render []
     S.post "/options/delete" $ do
@@ -84,7 +83,6 @@ scottySite = do
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
           then (T.unpack value):acc
           else acc) [] all_params
-
       case name of
         "" -> showAction id ["Vote needs a name"]
         otherwise -> do
