@@ -33,6 +33,11 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     name String
     desc String
     deriving Show
+  Cant
+    pollId PollId
+    name String
+    UniqueCant pollId name
+    deriving Show
   Option
     pollId PollId
     name String
@@ -77,6 +82,7 @@ scottySite = do
       name <- S.param "name" :: S.ActionM String
       options <- liftIO $ getOptionsByPollId id
       voters <- liftIO $ getVotesByOptionIds (optionIds options)
+      cants <- liftIO $ getCantsByPollId id
       all_params <- S.params
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
           then (T.unpack value):acc
@@ -84,9 +90,10 @@ scottySite = do
 
       case name of
         "" -> blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-                (optionsValues options) (getVoteNames voters) ["Vote needs a name"]
+                (optionsValues options) (getVoteNames voters) (cantNames cants)
+                ["Vote needs a name"]
         otherwise -> do
-          voteForOptions name (optionIds options) choosen_opt_ids
+          doVoting name (optionIds options) choosen_opt_ids id
           S.redirect $ T.pack $ "/polls/" ++ id
     S.get "/polls/:id/edit" $ do
       id <- S.param "id"
@@ -99,8 +106,9 @@ scottySite = do
       poll <- liftIO $ getPollById id
       options <- liftIO $ getOptionsByPollId id
       voters <- liftIO $ getVotesByOptionIds (optionIds options)
+      cants <- liftIO $ getCantsByPollId id
       blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-        (optionsValues options) (getVoteNames voters) []
+        (optionsValues options) (getVoteNames voters) (cantNames cants) []
     S.post "/polls/:id/update" $ do
       id <- S.param "id"
       name <- S.param "name"
@@ -144,10 +152,21 @@ createPoll name desc = do
     id <- insert $ Poll name desc
     return id
 
+createCant id name opt_ids = do
+  mapM_ (\i -> do
+    runSqlite "noodle.db" $ do
+      deleteWhere [VoteOptionId ==. (toSqlKey i), VoteVoter ==. name]
+    ) opt_ids
+  runSqlite "noodle.db" $ do
+    deleteWhere [CantPollId ==. pollId, CantName ==. name]
+    insert $ Cant pollId name
+  return ()
+  where pollId = (toSqlKey (read id))
+
 updatePoll id name desc = do
   runSqlite "noodle.db" $ do
     replace pollId $ Poll name desc
-    where pollId = (toSqlKey (read id))
+  where pollId = (toSqlKey (read id))
 
 getNewPollId id = unSqlBackendKey $ unPollKey id
 
@@ -161,6 +180,8 @@ getPollById id = do
     selectList [PollId ==. (toSqlKey (read id))] [LimitTo 1]
 
 pollNames = map (\i -> ((getPollId i), (pollName (entityVal i))))
+
+cantNames c = map (\i -> (cantName (entityVal i))) c
 
 getPollId x = unSqlBackendKey $ unPollKey $ entityKey x
 
@@ -176,6 +197,10 @@ getOptionId x = unSqlBackendKey $ unOptionKey $ entityKey x
 getOptionsByPollId id = do
   runSqlite "noodle.db" $ do
     selectList [OptionPollId ==. (toSqlKey (read id))] []
+
+getCantsByPollId id = do
+  runSqlite "noodle.db" $ do
+    selectList [CantPollId ==. (toSqlKey (read id))] []
 
 createOption pId name desc = do
   runSqlite "noodle.db" $ do
@@ -214,11 +239,19 @@ deleteOptions ids = do
       ) choosen_ids
   where choosen_ids = map (\x -> (toSqlKey (read x))) ids
 
-voteForOptions name opts c_opt_ids = do
-  mapM_ (\id -> runSqlite "noodle.db" $ do
-    deleteWhere [VoteOptionId ==. (toSqlKey id), VoteVoter ==. name]
+voteForOptions name opts c_opt_ids id = do
+  mapM_ (\i -> runSqlite "noodle.db" $ do
+    deleteWhere [VoteOptionId ==. (toSqlKey i), VoteVoter ==. name]
     ) opts
-  mapM_ (\id -> runSqlite "noodle.db" $ do
-    insert $ Vote id name
+  runSqlite "noodle.db" $ do
+    deleteWhere [CantPollId ==. pollId, CantName ==. name]
+  mapM_ (\i -> runSqlite "noodle.db" $ do
+    insert $ Vote i name
     ) choosen_ids
   where choosen_ids = map (\x -> (toSqlKey (read x))) c_opt_ids
+        pollId = (toSqlKey (read id))
+
+doVoting name opt_ids choosen_opt_ids id = do
+  case (length choosen_opt_ids) of
+    0 -> createCant id name opt_ids
+    otherwise -> voteForOptions name opt_ids choosen_opt_ids id

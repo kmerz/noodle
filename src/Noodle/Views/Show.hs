@@ -8,7 +8,7 @@ import Text.Blaze.Html.Renderer.Text
 import Data.List (intercalate)
 import Data.Map as M hiding ((!))
 
-render (pollId, pollName, pollDesc) options voters errors = do
+render (pollId, pollName, pollDesc) options voters cants errors = do
   H.html $ do
     H.head $ do
       H.title "Noodle - The doodle"
@@ -22,9 +22,11 @@ render (pollId, pollName, pollDesc) options voters errors = do
         A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/vote")) $ do
         H.table $ do
           H.tr $ do
-            H.td "Voted by"
+            H.td ""
             mapM_ renderOption options
           mapM_ renderVoter $ M.keys voters
+          H.tr $ do
+            mapM_ renderCants cants
           H.tr $ do
             H.td $ ""
             mapM_ renderVoteCount options
@@ -46,6 +48,10 @@ render (pollId, pollName, pollDesc) options voters errors = do
             H.input ! A.name "option_id" !
               A.value (H.stringValue (show id)) !
               A.type_ "checkbox"
+        renderCants cant = do
+          H.td $ H.toHtml cant
+          mapM_ (\ (_, _, _) ->
+            H.td ! A.class_ "false" $ "") options
         renderVoter voter = do
           H.tr $ do
             H.td $ H.toHtml voter
