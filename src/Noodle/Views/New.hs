@@ -7,7 +7,7 @@ import Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
 import Data.Monoid ((<>))
 
-render errors = do
+render errors =
   H.html $ do
     H.head $ do
       H.title "Noodle - The doodle"
@@ -18,15 +18,11 @@ render errors = do
       H.form ! A.class_ "form" ! A.method "post" ! A.action "/polls/" $ do
         H.table $ do
           H.tr $ do
-            H.td $ do
-              H.label "Name: "
-            H.td $ do
-              H.input ! A.name "name"
+            H.td $ H.label "Name: "
+            H.td $ H.input ! A.name "name"
           H.tr $ do
-            H.td $ do
-              H.label "Description: "
-            H.td $ do
-              H.textarea ! A.name "desc" ! A.cols "50" ! A.rows "10" $ ""
+            H.td $ H.label "Description: "
+            H.td $ H.textarea ! A.name "desc" ! A.cols "50" ! A.rows "10" $ ""
         H.div ! A.class_ "btns" $ do
           H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
           H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Add Poll"

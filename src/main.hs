@@ -57,32 +57,26 @@ main = do
   initDb
   scottySite
 
-scottySite = do
-  S.scotty 3000 $ do
-    S.get "/noodle.css" $ do
-      S.file "noodle.css"
+scottySite = S.scotty 3000 $ do
+    S.get "/noodle.css" $ S.file "noodle.css"
     S.get "/polls" $ do
-      polls <- liftIO $ allPolls
-      blaze $ Noodle.Views.Index.render $ pollNames $ polls
-    S.get "/" $ do
-      S.redirect "/polls"
-    S.get "/polls/new" $ do
-      blaze $ Noodle.Views.New.render []
+      polls <- liftIO allPolls
+      blaze $ Noodle.Views.Index.render $ pollNames polls
+    S.get "/" $ S.redirect "/polls"
+    S.get "/polls/new" $ blaze $ Noodle.Views.New.render []
     S.post "/options/delete" $ do
       id <- S.param "id" :: S.ActionM String
       all_params <- S.params
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
-          then (T.unpack value):acc
+          then T.unpack value:acc
           else acc) [] all_params
       deleteOptions choosen_opt_ids
       S.redirect $ T.pack $ "/polls/" ++ id ++ "/edit"
     S.post "/polls/:id/vote" $ do
-      id <- S.param "id" :: S.ActionM String
-      name <- S.param "name" :: S.ActionM String
-      options <- liftIO $ getOptionsByPollId id
+      (id, name, options) <- getPollFromParam
       all_params <- S.params
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
-          then (T.unpack value):acc
+          then T.unpack value:acc
           else acc) [] all_params
       case name of
         "" -> showAction id ["Vote needs the name who votes."] ""
@@ -107,9 +101,7 @@ scottySite = do
       name <- S.param "name" :: S.ActionM String
       showAction id [] name
     S.get "/polls/:id/vote/:name/delete" $ do
-      id <- S.param "id" :: S.ActionM String
-      name <- S.param "name" :: S.ActionM String
-      options <- liftIO $ getOptionsByPollId id
+      (id, name, options) <- getPollFromParam
       deleteVote id name (optionIds options)
       S.redirect $ T.pack $ "/polls/" ++ id
     S.post "/polls/:id/update" $ do
@@ -130,7 +122,7 @@ scottySite = do
         "" -> blaze $ Noodle.Views.New.render [ "A Poll needs a name" ]
         otherwise -> do
           newId <- liftIO $ createPoll name desc
-          S.redirect $ T.pack $ "/polls/" ++ (show (getNewPollId newId)) ++ "/edit"
+          S.redirect $ T.pack $ "/polls/" ++ show (getNewPollId newId) ++ "/edit"
     S.post "/options/" $ do
       name <- S.param "name" :: S.ActionM String
       desc <- S.param "desc" :: S.ActionM String
@@ -138,11 +130,18 @@ scottySite = do
       poll <- liftIO $ getPollById pId
       options <- liftIO $ getOptionsByPollId pId
       case name of
-        "" -> do blaze $ Noodle.Views.Edit.render (pollValues $ head poll)
+        "" -> blaze $ Noodle.Views.Edit.render (pollValues $ head poll)
                    (optionsValues options) [ "Option needs a name" ]
         otherwise -> do
           createOption pId name desc
           S.redirect $ T.pack $ "/polls/" ++ pId ++ "/edit"
+
+getPollFromParam = do
+  id <- S.param "id" :: S.ActionM String
+  name <- S.param "name" :: S.ActionM String
+  options <- liftIO $ getOptionsByPollId id
+  return (id, name, options)
+
 
 showAction id errors editVoter = do
   poll <- liftIO $ getPollById id
@@ -152,123 +151,97 @@ showAction id errors editVoter = do
   blaze $ Noodle.Views.Show.render (pollValues $ head poll)
     (optionsValues options) (getVoteNames voters) (cantNames cants) [] editVoter
 
-initDb = do
-  runSqlite "noodle.db" $ do
-    runMigration migrateAll
+initDb = runSqlite "noodle.db" $ runMigration migrateAll
 
-createPoll name desc = do
-  runSqlite "noodle.db" $ do
-    id <- insert $ Poll name desc
-    return id
+createPoll name desc = runSqlite "noodle.db" $ insert $ Poll name desc
 
 createCant id name opt_ids = do
-  mapM_ (\i -> do
-    runSqlite "noodle.db" $ do
-      deleteWhere [VoteOptionId ==. (toSqlKey i), VoteVoter ==. name]
-    ) opt_ids
+  mapM_ (\i -> runSqlite "noodle.db" $
+      deleteWhere [VoteOptionId ==. toSqlKey i, VoteVoter ==. name]) opt_ids
   runSqlite "noodle.db" $ do
     deleteWhere [CantPollId ==. pollId, CantName ==. name]
     insert $ Cant pollId name
   return ()
-  where pollId = (toSqlKey (read id))
+  where pollId = toSqlKey (read id)
 
-updatePoll id name desc = do
-  runSqlite "noodle.db" $ do
-    replace pollId $ Poll name desc
-  where pollId = (toSqlKey (read id))
+updatePoll id name desc = runSqlite "noodle.db" $ replace pollId $ Poll name desc
+  where pollId = toSqlKey (read id)
 
 getNewPollId id = unSqlBackendKey $ unPollKey id
 
-allPolls = do
-  runSqlite "noodle.db" $ do
-    polls <- selectList ([] :: [Filter Poll]) [LimitTo 30, Desc PollId]
-    return $ polls
+allPolls = runSqlite "noodle.db" $
+  selectList ([] :: [Filter Poll]) [LimitTo 30, Desc PollId]
 
-getPollById id = do
-  runSqlite "noodle.db" $ do
-    selectList [PollId ==. (toSqlKey (read id))] [LimitTo 1]
+getPollById id = runSqlite "noodle.db" $
+  selectList [PollId ==. toSqlKey (read id)] [LimitTo 1]
 
-pollNames = map (\i -> ((getPollId i), (pollName (entityVal i))))
+pollNames = map (\i -> (getPollId i, pollName $ entityVal i))
 
-cantNames c = map (\i -> (cantName (entityVal i))) c
+cantNames = map $ cantName . entityVal
 
 getPollId x = unSqlBackendKey $ unPollKey $ entityKey x
 
-pollValues i = ((getPollId i), (pollName (entityVal i)), (pollDesc (entityVal i)))
+pollValues i = (getPollId i, pollName $ entityVal i, pollDesc $ entityVal i)
 
-optionsValues = map (\o -> ((getOptionId o),
-  (optionName (entityVal o)), (optionDesc (entityVal o))))
+optionsValues = map (\o -> (getOptionId o, optionName $ entityVal o,
+  optionDesc $ entityVal o))
 
-optionIds opts = map (\o -> getOptionId o) opts
+optionIds = map getOptionId
 
 getOptionId x = unSqlBackendKey $ unOptionKey $ entityKey x
 
-getOptionsByPollId id = do
-  runSqlite "noodle.db" $ do
-    selectList [OptionPollId ==. (toSqlKey (read id))] []
+getOptionsByPollId id = runSqlite "noodle.db" $
+  selectList [OptionPollId ==. toSqlKey (read id)] []
 
-getCantsByPollId id = do
-  runSqlite "noodle.db" $ do
-    selectList [CantPollId ==. (toSqlKey (read id))] []
+getCantsByPollId id = runSqlite "noodle.db" $
+    selectList [CantPollId ==. toSqlKey (read id)] []
 
-createOption pId name desc = do
-  runSqlite "noodle.db" $ do
-    insert $ Option (toSqlKey (read pId)) name desc
+createOption pId name desc = runSqlite "noodle.db" $ insert $ 
+  Option (toSqlKey (read pId)) name desc
 
 getVotesByOptionIds ids = do
-  votes <- mapM (\ oId -> do
-    voters <- getVotersByOptionId oId
-    return (voters)) ids
-  let flat_votes = foldl (\acc x -> foldl (\a y -> y:a) acc x) [] votes
-  return flat_votes
+  votes <- mapM getVotersByOptionId ids
+  return $ foldl (foldl (flip (:))) [] votes
 
-getVoteNames votes = foldl voteNameMap M.empty votes
+getVoteNames = foldl voteNameMap M.empty
 
 voteNameMap acc vote =
   case M.lookup vName acc of
     Just ids -> M.insert vName (vOptId:ids) acc
-    Nothing -> M.insert vName (vOptId:[]) acc
+    Nothing -> M.insert vName [vOptId] acc
   where vName = voterName vote
         vOptId = unSqlBackendKey $ unOptionKey $ voterOptId vote
 
-voterValues = map (\(oId, voters) -> (oId, (map voterName voters)))
+voterValues = map (\(oId, voters) -> (oId, map voterName voters))
 
-voterName vote = (voteVoter (entityVal vote))
-voterOptId vote = (voteOptionId (entityVal vote))
+voterName vote = voteVoter (entityVal vote)
+voterOptId vote = voteOptionId (entityVal vote)
 
-getVotersByOptionId oId =
-  runSqlite "noodle.db" $ do
-    selectList [VoteOptionId ==. (toSqlKey oId)] [Asc VoteId]
+getVotersByOptionId oId = runSqlite "noodle.db" $
+  selectList [VoteOptionId ==. toSqlKey oId] [Asc VoteId]
 
-deleteOptions ids = do
-  runSqlite "noodle.db" $ do
+deleteOptions ids = runSqlite "noodle.db" $
     mapM_ (\id -> runSqlite "noodle.db" $ do
       deleteWhere [VoteOptionId ==. id]
       deleteWhere [OptionId ==. id]
       ) choosen_ids
-  where choosen_ids = map (\x -> (toSqlKey (read x))) ids
+  where choosen_ids = map (toSqlKey . read ) ids
 
 voteForOptions name opts c_opt_ids id = do
-  mapM_ (\i -> runSqlite "noodle.db" $ do
-    deleteWhere [VoteOptionId ==. (toSqlKey i), VoteVoter ==. name]
-    ) opts
-  runSqlite "noodle.db" $ do
-    deleteWhere [CantPollId ==. pollId, CantName ==. name]
-  mapM_ (\i -> runSqlite "noodle.db" $ do
-    insert $ Vote i name
-    ) choosen_ids
-  where choosen_ids = map (\x -> (toSqlKey (read x))) c_opt_ids
-        pollId = (toSqlKey (read id))
+  mapM_ (\i -> runSqlite "noodle.db" $
+    deleteWhere [VoteOptionId ==. toSqlKey i, VoteVoter ==. name]) opts
+  runSqlite "noodle.db" $ deleteWhere [CantPollId ==. pollId, CantName ==. name]
+  mapM_ (\i -> runSqlite "noodle.db" $ insert $ Vote i name) choosen_ids
+  where choosen_ids = map (toSqlKey . read) c_opt_ids
+        pollId = toSqlKey (read id)
 
-doVoting name opt_ids choosen_opt_ids id = do
-  case (length choosen_opt_ids) of
+doVoting name opt_ids choosen_opt_ids id =
+  case length choosen_opt_ids of
     0 -> createCant id name opt_ids
     otherwise -> voteForOptions name opt_ids choosen_opt_ids id
 
 deleteVote id name opts = do
-  mapM_ (\i -> runSqlite "noodle.db" $ do
-    deleteWhere [VoteOptionId ==. (toSqlKey i), VoteVoter ==. name]
-    ) opts
-  runSqlite "noodle.db" $ do
-    deleteWhere [CantPollId ==. pollId, CantName ==. name]
-  where pollId = (toSqlKey (read id))
+  mapM_ (\i -> runSqlite "noodle.db" $
+    deleteWhere [VoteOptionId ==. toSqlKey i, VoteVoter ==. name]) opts
+  runSqlite "noodle.db" $ deleteWhere [CantPollId ==. pollId, CantName ==. name]
+  where pollId = toSqlKey (read id)

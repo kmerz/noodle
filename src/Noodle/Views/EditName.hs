@@ -7,7 +7,7 @@ import Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
 import Data.Monoid ((<>))
 
-render (pollId, pollName, pollDesc) errors = do
+render (pollId, pollName, pollDesc) errors =
   H.html $ do
     H.head $ do
       H.title "Noodle - The doodle"
@@ -16,22 +16,18 @@ render (pollId, pollName, pollDesc) errors = do
       H.h2 "Edit the poll"
       mapM_ renderErrors errors
       H.form ! A.class_ "form" ! A.method "post" !
-        A.action (H.stringValue ("/polls/" ++ (show pollId) ++ "/update")) $ do
+        A.action (H.stringValue ("/polls/" ++ show pollId ++ "/update")) $ do
         H.table $ do
           H.tr $ do
-            H.td $ do
-              H.label "Name: "
-            H.td $ do
-              H.input ! A.name "name" ! A.value (H.stringValue pollName)
+            H.td $ H.label "Name: "
+            H.td $ H.input ! A.name "name" ! A.value (H.stringValue pollName)
           H.tr $ do
-            H.td $ do
-              H.label "Description: "
-            H.td $ do
-              H.textarea ! A.name "desc" ! A.cols "50" ! A.rows "10" $
-                H.toHtml pollDesc
+            H.td $ H.label "Description: "
+            H.td $ H.textarea ! A.name "desc" ! A.cols "50" ! A.rows "10" $
+              H.toHtml pollDesc
         H.div ! A.class_ "btns" $ do
           H.a ! A.class_ "btn" ! A.href (
-            H.stringValue ("/polls/" ++ (show pollId))) $ "To poll"
+            H.stringValue ("/polls/" ++ show pollId)) $ "To poll"
           H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Update Poll"
   where renderErrors error = do
           H.p ! A.class_ "error" $ error

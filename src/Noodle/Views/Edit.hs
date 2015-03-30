@@ -7,7 +7,7 @@ import Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
 import Data.Monoid ((<>))
 
-render (pollId, pollName, pollDesc) options errors = do
+render (pollId, pollName, pollDesc) options errors =
   H.html $ do
     H.head $ do
       H.title "Noodle - The doodle"
@@ -22,23 +22,20 @@ render (pollId, pollName, pollDesc) options errors = do
           A.name "id"
         H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Add"
       H.form ! A.method "post" !
-        A.action (H.stringValue ("/options/delete")) $ do
-        H.table $ do
-          mapM_ (renderLn) options
+        A.action (H.stringValue "/options/delete") $ do
+        H.table $ mapM_ renderLn options
         H.input ! A.type_ "hidden" ! A.value (H.stringValue (show pollId)) !
           A.name "id"
         H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Delete"
-        H.a ! A.class_ "btn" ! A.href (H.stringValue ("/polls/" ++ (show pollId))) $
+        H.a ! A.class_ "btn" ! A.href (H.stringValue ("/polls/" ++ show pollId)) $
           "To poll"
   where renderErrors error = do
           H.p ! A.class_ "error" $ error
           H.br
-        renderLn (id, name, desc) = do
+        renderLn (id, name, desc) =
           H.tr $ do
-            H.td $ do
+            H.td $
               H.input ! A.name "option_id" ! A.value (H.stringValue (show id)) !
                 A.type_ "checkbox"
-            H.td $ do
-              H.b $ H.toHtml $ name
-            H.td $ do
-              H.toHtml desc
+            H.td $ H.b $ H.toHtml name
+            H.td $ H.toHtml desc

@@ -7,7 +7,7 @@ import Text.Blaze.Html5.Attributes as A
 import Text.Blaze.Html.Renderer.Text
 import Data.Monoid ((<>))
 
-render items = do
+render items =
   H.html $ do
     H.head $ do
       H.title "Noodle - The doodle"
@@ -15,10 +15,7 @@ render items = do
     H.body $ do
       H.h2 "Noodle - The doodle"
       H.a ! A.class_ "btn" ! A.href "/polls/new" $ "New Poll"
-      H.table ! A.class_ "table" $ do
-        mapM_ renderLn items
-  where renderLn i = do
-          H.tr $ do
-            H.td $ do
-              H.a ! A.href ("/polls/" <> (H.stringValue (show $ fst i))) $
-                H.toHtml (snd i)
+      H.table ! A.class_ "table" $ mapM_ renderLn items
+  where renderLn i = H.tr $ H.td $
+          H.a ! A.href ("/polls/" <> H.stringValue (show $ fst i)) $
+            H.toHtml (snd i)
