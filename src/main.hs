@@ -84,7 +84,7 @@ scottySite = do
           then (T.unpack value):acc
           else acc) [] all_params
       case name of
-        "" -> showAction id ["Vote needs a name"]
+        "" -> showAction id ["Vote needs the name who votes."]
         otherwise -> do
           doVoting name (optionIds options) choosen_opt_ids id
           S.redirect $ T.pack $ "/polls/" ++ id
@@ -114,7 +114,7 @@ scottySite = do
       name <- S.param "name"
       desc <- S.param "desc"
       case name of
-        "" -> blaze $ Noodle.Views.New.render [ "Poll needs a name" ]
+        "" -> blaze $ Noodle.Views.New.render [ "A Poll needs a name" ]
         otherwise -> do
           newId <- liftIO $ createPoll name desc
           S.redirect $ T.pack $ "/polls/" ++ (show (getNewPollId newId))
