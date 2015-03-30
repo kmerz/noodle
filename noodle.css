@@ -73,3 +73,9 @@ h4 {
 .checker {
   text-align: center;
 }
+
+.count {
+  text-align: center;
+  background-color: #819FF7;
+  color: #fff;
+}

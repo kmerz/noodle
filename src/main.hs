@@ -204,7 +204,7 @@ voterOptId vote = (voteOptionId (entityVal vote))
 
 getVotersByOptionId oId =
   runSqlite "noodle.db" $ do
-    selectList [VoteOptionId ==. (toSqlKey oId)] []
+    selectList [VoteOptionId ==. (toSqlKey oId)] [Asc VoteId]
 
 deleteOptions ids = do
   runSqlite "noodle.db" $ do

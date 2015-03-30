@@ -26,10 +26,13 @@ render (pollId, pollName, pollDesc) options voters errors = do
             mapM_ renderOption options
           mapM_ renderVoter $ M.keys voters
           H.tr $ do
+            H.td $ ""
+            mapM_ renderVoteCount options
+          H.tr $ do
             H.td $ do
               H.input ! A.class_ "input" ! A.placeholder "Vote as" ! A.name "name"
             mapM_ renderCheckbox options
-        H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
+            H.td $ H.input ! A.class_ "btn" ! A.type_ "submit" ! A.value "Vote"
       H.a ! A.class_ "btn" ! A.href "/polls" $ "Back"
       H.a ! A.class_ "btn" !
         A.href (H.stringValue ("/polls/" ++ (show pollId) ++ "/edit")) $ "Edit"
@@ -53,6 +56,10 @@ render (pollId, pollName, pollDesc) options voters errors = do
                                  else H.td ! A.class_ "false" $ ""
                 Nothing -> H.td ""
               ) options
+        renderVoteCount (id, _, _) = do
+          H.td ! A.class_ "count" $ H.toHtml (show count)
+          where count = M.fold(\ids acc ->
+                  if id `elem` ids then acc + 1 else acc) 0 voters
         renderErrors error = do
           H.p ! A.class_ "error" $ error
           H.br
