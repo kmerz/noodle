@@ -101,6 +101,12 @@ scottySite = do
       id <- S.param "id" :: S.ActionM String
       name <- S.param "name" :: S.ActionM String
       showAction id [] name
+    S.get "/polls/:id/vote/:name/delete" $ do
+      id <- S.param "id" :: S.ActionM String
+      name <- S.param "name" :: S.ActionM String
+      options <- liftIO $ getOptionsByPollId id
+      deleteVote id name (optionIds options)
+      S.redirect $ T.pack $ "/polls/" ++ id
     S.post "/polls/:id/update" $ do
       id <- S.param "id"
       name <- S.param "name"
@@ -255,3 +261,11 @@ doVoting name opt_ids choosen_opt_ids id = do
   case (length choosen_opt_ids) of
     0 -> createCant id name opt_ids
     otherwise -> voteForOptions name opt_ids choosen_opt_ids id
+
+deleteVote id name opts = do
+  mapM_ (\i -> runSqlite "noodle.db" $ do
+    deleteWhere [VoteOptionId ==. (toSqlKey i), VoteVoter ==. name]
+    ) opts
+  runSqlite "noodle.db" $ do
+    deleteWhere [CantPollId ==. pollId, CantName ==. name]
+  where pollId = (toSqlKey (read id))

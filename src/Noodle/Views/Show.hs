@@ -60,6 +60,10 @@ render (pollId, pollName, pollDesc) options voters cants errors editVoter = do
                 A.href (H.stringValue (
                   "/polls/" ++ (show pollId) ++ "/vote/" ++ cant ++ "/edit")) $
                     "Edit"
+              H.td $ H.a ! A.class_ "btn" !
+                A.href (H.stringValue (
+                  "/polls/" ++ (show pollId) ++ "/vote/" ++ cant ++ "/delete")) $
+                    "Delete"
         renderVoter voter = do
           if (voter == editVoter)
             then
@@ -78,6 +82,10 @@ render (pollId, pollName, pollDesc) options voters cants errors editVoter = do
                 A.href (H.stringValue (
                   "/polls/" ++ (show pollId) ++ "/vote/" ++ voter ++ "/edit")) $
                     "Edit"
+              H.td $ H.a ! A.class_ "btn" !
+                A.href (H.stringValue (
+                  "/polls/" ++ (show pollId) ++ "/vote/" ++ voter ++ "/delete")) $
+                    "Delete"
         renderVoteCount (id, _, _) = do
           H.td ! A.class_ "count" $ H.toHtml (show count)
           where count = M.fold(\ids acc ->
