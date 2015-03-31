@@ -18,7 +18,7 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO)
-import Data.Time
+import Data.Time (UTCTime, getCurrentTime)
 import qualified Data.Map as M
 import Data.Text.Lazy as T (unpack, pack)
 import Data.Monoid (mconcat)
@@ -33,20 +33,24 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
   Poll
     name String
     desc String
+    createdAt UTCTime
     deriving Show
   Cant
     pollId PollId
     name String
+    createdAt UTCTime
     UniqueCant pollId name
     deriving Show
   Option
     pollId PollId
     name String
     desc String
+    createdAt UTCTime
     deriving Show
   Vote
     optionId OptionId
     voter String
+    createdAt UTCTime
     UniqueVote optionId voter
     deriving Show
   |]
@@ -60,7 +64,7 @@ main = do
 scottySite = S.scotty 3000 $ do
     S.get "/noodle.css" $ S.file "noodle.css"
     S.get "/polls" $ do
-      polls <- liftIO allPolls
+      polls <- liftIO getPolls
       blaze $ Noodle.Views.Index.render $ pollNames polls
     S.get "/" $ S.redirect "/polls"
     S.get "/polls/new" $ blaze $ Noodle.Views.New.render []
@@ -153,23 +157,28 @@ showAction id errors editVoter = do
 
 initDb = runSqlite "noodle.db" $ runMigration migrateAll
 
-createPoll name desc = runSqlite "noodle.db" $ insert $ Poll name desc
+createPoll name desc = do
+  now <- liftIO $ getCurrentTime
+  runSqlite "noodle.db" $ insert $ Poll name desc now
 
 createCant id name opt_ids = do
+  now <- liftIO $ getCurrentTime
   mapM_ (\i -> runSqlite "noodle.db" $
       deleteWhere [VoteOptionId ==. toSqlKey i, VoteVoter ==. name]) opt_ids
   runSqlite "noodle.db" $ do
     deleteWhere [CantPollId ==. pollId, CantName ==. name]
-    insert $ Cant pollId name
+    insert $ Cant pollId name now
   return ()
   where pollId = toSqlKey (read id)
 
-updatePoll id name desc = runSqlite "noodle.db" $ replace pollId $ Poll name desc
+updatePoll id name desc = do
+  now <- liftIO $ getCurrentTime
+  runSqlite "noodle.db" $ replace pollId $ Poll name desc now
   where pollId = toSqlKey (read id)
 
 getNewPollId id = unSqlBackendKey $ unPollKey id
 
-allPolls = runSqlite "noodle.db" $
+getPolls = runSqlite "noodle.db" $
   selectList ([] :: [Filter Poll]) [LimitTo 30, Desc PollId]
 
 getPollById id = runSqlite "noodle.db" $
@@ -196,8 +205,10 @@ getOptionsByPollId id = runSqlite "noodle.db" $
 getCantsByPollId id = runSqlite "noodle.db" $
     selectList [CantPollId ==. toSqlKey (read id)] []
 
-createOption pId name desc = runSqlite "noodle.db" $ insert $ 
-  Option (toSqlKey (read pId)) name desc
+createOption pId name desc = do
+  now <- liftIO $ getCurrentTime
+  runSqlite "noodle.db" $ insert $
+    Option (toSqlKey (read pId)) name desc now
 
 getVotesByOptionIds ids = do
   votes <- mapM getVotersByOptionId ids
@@ -218,7 +229,7 @@ voterName vote = voteVoter (entityVal vote)
 voterOptId vote = voteOptionId (entityVal vote)
 
 getVotersByOptionId oId = runSqlite "noodle.db" $
-  selectList [VoteOptionId ==. toSqlKey oId] [Asc VoteId]
+  selectList [VoteOptionId ==. toSqlKey oId] [Asc VoteCreatedAt]
 
 deleteOptions ids = runSqlite "noodle.db" $
     mapM_ (\id -> runSqlite "noodle.db" $ do
@@ -228,10 +239,11 @@ deleteOptions ids = runSqlite "noodle.db" $
   where choosen_ids = map (toSqlKey . read ) ids
 
 voteForOptions name opts c_opt_ids id = do
+  now <- liftIO $ getCurrentTime
   mapM_ (\i -> runSqlite "noodle.db" $
     deleteWhere [VoteOptionId ==. toSqlKey i, VoteVoter ==. name]) opts
   runSqlite "noodle.db" $ deleteWhere [CantPollId ==. pollId, CantName ==. name]
-  mapM_ (\i -> runSqlite "noodle.db" $ insert $ Vote i name) choosen_ids
+  mapM_ (\i -> runSqlite "noodle.db" $ insert $ Vote i name now) choosen_ids
   where choosen_ids = map (toSqlKey . read) c_opt_ids
         pollId = toSqlKey (read id)
 
