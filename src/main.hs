@@ -76,6 +76,10 @@ scottySite = S.scotty 3000 $ do
           else acc) [] all_params
       deleteOptions choosen_opt_ids
       S.redirect $ T.pack $ "/polls/" ++ id ++ "/edit"
+    S.get "/polls/:id/delete" $ do
+      id <- S.param "id"
+      deletePoll id
+      S.redirect "/polls"
     S.post "/polls/:id/vote" $ do
       (id, name, options) <- getPollFromParam
       all_params <- S.params
@@ -169,6 +173,10 @@ createCant id name opt_ids = do
     deleteWhere [CantPollId ==. pollId, CantName ==. name]
     insert $ Cant pollId name now
   return ()
+  where pollId = toSqlKey (read id)
+
+deletePoll id = runSqlite "noodle.db" $
+  deleteWhere [PollId ==. pollId]
   where pollId = toSqlKey (read id)
 
 updatePoll id name desc = do

@@ -16,6 +16,9 @@ render items =
       H.h2 "Noodle - The doodle"
       H.a ! A.class_ "btn" ! A.href "/polls/new" $ "New Poll"
       H.table ! A.class_ "table" $ mapM_ renderLn items
-  where renderLn i = H.tr $ H.td $
-          H.a ! A.href ("/polls/" <> H.stringValue (show $ fst i)) $
+  where renderLn i = H.tr $ do
+          H.td $ H.a ! A.href ("/polls/" <> H.stringValue (show $ fst i)) $
             H.toHtml (snd i)
+          H.td $ H.a ! A.class_ "btn" !
+            A.href (H.stringValue ("/polls/" ++ (show $ fst i) ++ "/delete")) $
+              "delete"
