@@ -86,8 +86,9 @@ scottySite = S.scotty 3000 $ do
       let choosen_opt_ids = foldl (\ acc (key, value) -> if key == "option_id"
           then T.unpack value:acc
           else acc) [] all_params
-      case name of
-        "" -> showAction id ["Vote needs the name who votes."] ""
+      case (validVote name) of
+        False -> (showAction id
+          ["Vote needs the name who votes and must not contain '?'."] "")
         otherwise -> do
           doVoting name (optionIds options) choosen_opt_ids id
           S.redirect $ T.pack $ "/polls/" ++ id
@@ -156,8 +157,9 @@ showAction id errors editVoter = do
   options <- liftIO $ getOptionsByPollId id
   voters <- liftIO $ getVotesByOptionIds (optionIds options)
   cants <- liftIO $ getCantsByPollId id
-  blaze $ Noodle.Views.Show.render (pollValues $ head poll)
-    (optionsValues options) (getVoteNames voters) (cantNames cants) [] editVoter
+  blaze $ (Noodle.Views.Show.render (pollValues $ head poll)
+    (optionsValues options) (getVoteNames voters) (cantNames cants) errors
+      editVoter)
 
 initDb = runSqlite "noodle.db" $ runMigration migrateAll
 
@@ -265,3 +267,7 @@ deleteVote id name opts = do
     deleteWhere [VoteOptionId ==. toSqlKey i, VoteVoter ==. name]) opts
   runSqlite "noodle.db" $ deleteWhere [CantPollId ==. pollId, CantName ==. name]
   where pollId = toSqlKey (read id)
+
+validVote name = validLength && validChars
+  where validLength = (length name) > 0
+        validChars = foldl (\ acc c -> c /= '?' && acc) True name
