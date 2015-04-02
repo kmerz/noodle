@@ -57,14 +57,14 @@ render (pollId, pollName, pollDesc) options voters cants errors editVoter =
               H.td $ H.toHtml cant
               mapM_ (\ (_, _, _) ->
                 H.td ! A.class_ "false" $ "") options
-              H.td $ H.a ! A.class_ "btn" !
+              H.td $ H.a ! A.class_ "btn td-edit" !
                 A.href (H.stringValue (
                   "/polls/" ++ show pollId ++ "/vote/" ++ cant ++ "/edit")) $
-                    "Edit"
-              H.td $ H.a ! A.class_ "btn" !
+                    "edit"
+              H.td $ H.a ! A.class_ "btn td-delete" !
                 A.href (H.stringValue (
                   "/polls/" ++ show pollId ++ "/vote/" ++ cant ++ "/delete")) $
-                    "Delete"
+                    "delete"
         renderVoter voter =
           if voter == editVoter then renderEditVote voter
             else
@@ -77,14 +77,14 @@ render (pollId, pollName, pollDesc) options voters cants errors editVoter =
                                 else H.td ! A.class_ "false" $ ""
                   Nothing -> H.td ""
                 ) options
-              H.td $ H.a ! A.class_ "btn" !
+              H.td $ H.a ! A.class_ "btn td-edit" !
                 A.href (H.stringValue (
                   "/polls/" ++ show pollId ++ "/vote/" ++ voter ++ "/edit")) $
-                    "Edit"
-              H.td $ H.a ! A.class_ "btn" !
+                    "edit"
+              H.td $ H.a ! A.class_ "btn td-delete" !
                 A.href (H.stringValue (
                   "/polls/" ++ show pollId ++ "/vote/" ++ voter ++ "/delete")) $
-                    "Delete"
+                    "delete"
         renderVoteCount (id, _, _) =
           H.td ! A.class_ "count" $ H.toHtml (show count)
           where count = M.fold(\ids acc ->

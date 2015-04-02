@@ -45,6 +45,13 @@ h4 {
   margin-right: 8px;
 }
 
+a.btn.td-edit {
+  color: #819FF7;
+}
+a.btn.td-delete {
+  color: #819FF7;
+}
+
 .input {
   font-size: 14px;
   margin-right: 5px;
