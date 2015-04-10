@@ -13,9 +13,11 @@ render items =
       H.title "Noodle - The doodle"
       H.link ! A.rel "stylesheet" ! A.type_ "text/css" ! A.href "/noodle.css"
     H.body $ do
-      H.h2 "Noodle - The doodle"
-      H.a ! A.class_ "btn" ! A.href "/polls/new" $ "New Poll"
-      H.table ! A.class_ "table" $ mapM_ renderLn items
+      H.h2 ! A.class_ "header" $ "Noodle - The doodle"
+      H.h3 ! A.class_ "title" $ "All polls"
+      H.div ! A.class_ "container" $ do
+        H.a ! A.class_ "btn" ! A.href "/polls/new" $ "New Poll"
+        H.table ! A.class_ "table" $ mapM_ renderLn items
   where renderLn i = H.tr $ do
           H.td $ H.a ! A.href ("/polls/" <> H.stringValue (show $ fst i)) $
             H.toHtml (snd i)
