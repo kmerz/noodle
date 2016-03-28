@@ -22,6 +22,7 @@ import Data.Time (UTCTime, getCurrentTime)
 import qualified Data.Map as M
 import Data.Text.Lazy as T (unpack, pack)
 import Data.Monoid (mconcat)
+import System.Environment (getArgs)
 
 import qualified Noodle.Views.Index
 import qualified Noodle.Views.Show
@@ -58,10 +59,15 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 blaze = S.html . renderHtml
 main :: IO ()
 main = do
+  args <- getArgs
   initDb
-  scottySite
+  scottySite $ getPort args
 
-scottySite = S.scotty 3000 $ do
+getPort :: [String] -> Int
+getPort [] = 80
+getPort args = head $ map (\ p -> (read p :: Int)) args
+
+scottySite port = S.scotty port $ do
     S.get "/noodle.css" $ S.file "noodle.css"
     S.get "/polls" $ do
       polls <- liftIO getPolls
