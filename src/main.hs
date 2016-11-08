@@ -84,6 +84,11 @@ scottySite port = S.scotty port $ do
       S.redirect $ T.pack $ "/polls/" ++ id ++ "/edit"
     S.get "/polls/:id/delete" $ do
       id <- S.param "id"
+      options <- liftIO $ getOptionsByPollId id
+      mapM_ (\oid -> runSqlite "noodle.db" $ do
+        deleteWhere [VoteOptionId ==. oid]
+        deleteWhere [OptionId ==. oid]
+        ) (map toSqlKey (optionIds options))
       deletePoll id
       S.redirect "/polls"
     S.post "/polls/:id/vote" $ do
@@ -183,7 +188,8 @@ createCant id name opt_ids = do
   return ()
   where pollId = toSqlKey (read id)
 
-deletePoll id = runSqlite "noodle.db" $
+deletePoll id = runSqlite "noodle.db" $ do
+  deleteWhere [CantPollId ==. pollId]
   deleteWhere [PollId ==. pollId]
   where pollId = toSqlKey (read id)
 
